@@ -9,7 +9,7 @@ namespace qformats::wad
 {
 	static const int MAGIC_LEN = 4;
 
-	qwad_ptr QuakeWad::FromFile(const std::string &fileName, QuakeWadOptions opts)
+	QuakeWadPtr QuakeWad::FromFile(const std::string &fileName, QuakeWadOptions opts)
 	{
 		auto w = std::make_shared<QuakeWad>();
 		w->opts = opts;
@@ -66,12 +66,26 @@ namespace qformats::wad
 		return &qwe.texture;
 	}
 
+	QuakeTexture *QuakeWad::FromBuffer(const uint8_t *buff, int width, int height)
+	{
+		auto qtex = new QuakeTexture();
+		qtex->width = width;
+		qtex->height = height;
+		fillTextureData(buff, width * height, *qtex);
+		return qtex;
+	}
+
 	void QuakeWad::fillTextureData(const std::vector<uint8_t> buff, QuakeTexture &tex)
+	{
+		fillTextureData(buff.data(), buff.size(), tex);
+	}
+
+	void QuakeWad::fillTextureData(const uint8_t *buff, size_t size, QuakeTexture &tex)
 	{
 		int k = 0, w = 0;
 		int h = opts.flipTexHorizontal ? tex.height - 1 : 0;
-		tex.raw = cvec(buff.size());
-		for (int idx = buff.size() - 1; idx >= 0; idx--)
+		tex.raw = cvec(size);
+		for (int idx = size - 1; idx >= 0; idx--)
 		{
 			auto rgba = pal.GetColor((int)(buff[w + (h * tex.width)]));
 			tex.raw[k] = rgba;
@@ -84,30 +98,4 @@ namespace qformats::wad
 		}
 		return;
 	}
-
-	void QuakeWadManager::AddWadFile(const std::string &fileName, QuakeWadOptions opts)
-	{
-		auto qw = QuakeWad::FromFile(fileName, opts);
-		if (qw != nullptr)
-		{
-			wads.push_back(qw);
-		}
-	}
-
-	void QuakeWadManager::AddWadFile(const std::string &fileName, Palette pal, QuakeWadOptions opts)
-	{
-		auto qw = QuakeWad::FromFile(fileName, opts);
-		qw->pal = pal;
-		wads.push_back(qw);
-	}
-
-	QuakeTexture *QuakeWadManager::FindTexture(const std::string &textureName)
-	{
-		for (int i = 0; i < wads.size(); i++)
-		{
-			return wads[i]->GetTexture(textureName);
-		}
-		return nullptr;
-	}
-
 }

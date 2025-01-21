@@ -46,7 +46,7 @@ namespace qformats::wad
 	};
 
 	class QuakeWad;
-	using qwad_ptr = std::shared_ptr<QuakeWad>;
+	using QuakeWadPtr = std::shared_ptr<QuakeWad>;
 
 	struct QuakeWadOptions
 	{
@@ -59,25 +59,18 @@ namespace qformats::wad
 		QuakeWadOptions opts;
 
 	public:
-		static qwad_ptr FromFile(const std::string &fileName, QuakeWadOptions opts = QuakeWadOptions());
+		static QuakeWadPtr FromFile(const std::string &fileName, QuakeWadOptions opts = QuakeWadOptions());
+		static QuakeWadPtr NewQuakeWad() { return std::make_shared<QuakeWad>(); }
+		QuakeTexture *FromBuffer(const uint8_t *buff, int width, int height);
 		~QuakeWad();
 		QuakeTexture *GetTexture(const std::string &textureName);
-		const std::map<std::string, QuakeWadEntry> &Textures()
-		{
-			return entries;
-		};
-		void SetPalette(const Palette &p)
-		{
-			this->pal = p;
-		};
-		const Palette &GetPalette()
-		{
-			return pal;
-		};
+		const std::map<std::string, QuakeWadEntry> &Textures() { return entries; };
+		void SetPalette(const Palette &p) { this->pal = p; };
+		const Palette &GetPalette() { return pal; };
 
 	private:
 		void fillTextureData(const std::vector<uint8_t> buff, QuakeTexture &tex);
-
+		void fillTextureData(const uint8_t *buff, size_t size, QuakeTexture &tex);
 		unsigned int numEntries;
 		unsigned int dirOffset;
 		Palette pal = default_palette;
@@ -85,16 +78,5 @@ namespace qformats::wad
 		std::map<std::string, QuakeWadEntry> entries;
 
 		friend class QuakeWadManager;
-	};
-
-	class QuakeWadManager
-	{
-	public:
-		void AddWadFile(const std::string &fileName, QuakeWadOptions opts = QuakeWadOptions());
-		void AddWadFile(const std::string &fileName, Palette pal, QuakeWadOptions opts = QuakeWadOptions());
-		QuakeTexture *FindTexture(const std::string &textureName);
-
-	private:
-		std::vector<qwad_ptr> wads;
 	};
 }
