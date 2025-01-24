@@ -1,82 +1,107 @@
 #pragma once
 
-#include <string>
+#include "palette.h"
+#include <fstream>
 #include <map>
 #include <memory>
-#include <fstream>
-#include "palette.h"
+#include <string>
 
 namespace qformats::wad
 {
-	static const int TEXTURE_NAME_LENGTH = 16;
-	static const int MAX_MIP_LEVELS = 4;
+    static const int TEXTURE_NAME_LENGTH = 16;
+    static const int MAX_MIP_LEVELS = 4;
 
-	struct QuakeTexture
-	{
-		unsigned int width;
-		unsigned int height;
-		unsigned int mipOffsets[MAX_MIP_LEVELS];
-		cvec raw;
-	};
+    enum QuakeTextureType
+    {
+        TTYPE_DEFAULT_TEXTURE = 0,
+        TTYPE_SKY_TEXTURE = 1
+    };
 
-	struct QuakeWadEntry
-	{
-		enum QuakeWadEntryType
-		{
-			QWET_Palette = 0x40,
-			QWET_SBarPic = 0x42,
-			QWET_MipsTexture = 0x44,
-			QWET_ConsolePic = 0x45
-		};
-		struct header
-		{
-			unsigned int offset;
-			unsigned int inWadSize;
-			unsigned int size;
-			unsigned char type;
-			unsigned char compression;
-			unsigned short unknown;
-		} header;
-		std::string name;
-		QuakeTexture texture;
-		QuakeWadEntryType Type()
-		{
-			return (QuakeWadEntryType)header.type;
-		}
-	};
+    struct QuakeTexture
+    {
+        virtual void FillTextureData(const uint8_t *buff, size_t size, bool flipHorizontal, const Palette &pal);
+        unsigned int width = 0;
+        unsigned int height = 0;
+        unsigned int mipOffsets[MAX_MIP_LEVELS];
+        QuakeTextureType type = TTYPE_DEFAULT_TEXTURE;
+        cvec raw;
+    };
 
-	class QuakeWad;
-	using QuakeWadPtr = std::shared_ptr<QuakeWad>;
+    struct QuakeSkyTexture : public QuakeTexture
+    {
+        void FillTextureData(const uint8_t *buff, size_t size, bool flipHorizontal, const Palette &pal);
+        const cvec &BaseSky() const;
+        const cvec &Alphaky() const;
+        cvec rawFront;
+    };
 
-	struct QuakeWadOptions
-	{
-		bool flipTexHorizontal;
-	};
+    struct QuakeWadEntry
+    {
+        enum QuakeWadEntryType
+        {
+            QWET_Palette = 0x40,
+            QWET_SBarPic = 0x42,
+            QWET_MipsTexture = 0x44,
+            QWET_ConsolePic = 0x45
+        };
+        struct header
+        {
+            unsigned int offset;
+            unsigned int inWadSize;
+            unsigned int size;
+            unsigned char type;
+            unsigned char compression;
+            unsigned short unknown;
+        } header;
+        std::string name;
+        QuakeTexture texture;
+        QuakeWadEntryType Type()
+        {
+            return (QuakeWadEntryType)header.type;
+        }
+    };
 
-	class QuakeWad
-	{
-	public:
-		QuakeWadOptions opts;
+    class QuakeWad;
+    using QuakeWadPtr = std::shared_ptr<QuakeWad>;
 
-	public:
-		static QuakeWadPtr FromFile(const std::string &fileName, QuakeWadOptions opts = QuakeWadOptions());
-		static QuakeWadPtr NewQuakeWad() { return std::make_shared<QuakeWad>(); }
-		QuakeTexture *FromBuffer(const uint8_t *buff, int width, int height);
-		~QuakeWad();
-		QuakeTexture *GetTexture(const std::string &textureName);
-		const std::map<std::string, QuakeWadEntry> &Textures() { return entries; };
-		void SetPalette(const Palette &p) { this->pal = p; };
-		const Palette &GetPalette() { return pal; };
+    struct QuakeWadOptions
+    {
+        bool flipTexHorizontal;
+    };
 
-	private:
-		void fillTextureData(const std::vector<uint8_t> buff, QuakeTexture &tex);
-		void fillTextureData(const uint8_t *buff, size_t size, QuakeTexture &tex);
-		unsigned int numEntries;
-		unsigned int dirOffset;
-		Palette pal = default_palette;
-		std::ifstream istream;
-		std::map<std::string, QuakeWadEntry> entries;
+    class QuakeWad
+    {
+      public:
+        QuakeWadOptions opts;
 
-		friend class QuakeWadManager;
-	};
-}
+      public:
+        static QuakeWadPtr FromFile(const std::string &fileName, QuakeWadOptions opts = QuakeWadOptions());
+        static QuakeWadPtr NewQuakeWad()
+        {
+            return std::make_shared<QuakeWad>();
+        }
+        QuakeTexture *FromBuffer(const uint8_t *buff, bool isSky, int width, int height);
+        ~QuakeWad();
+        QuakeTexture *GetTexture(const std::string &textureName);
+        const std::map<std::string, QuakeWadEntry> &Textures()
+        {
+            return entries;
+        };
+        void SetPalette(const Palette &p)
+        {
+            this->pal = p;
+        };
+        const Palette &GetPalette()
+        {
+            return pal;
+        };
+        static bool IsSkyTexture(const std::string texname);
+
+      private:
+        unsigned int numEntries;
+        unsigned int dirOffset;
+        Palette pal = default_palette;
+        std::ifstream istream;
+        std::map<std::string, QuakeWadEntry> entries;
+    };
+} // namespace qformats::wad
